@@ -480,15 +480,15 @@
       Planta de iluminación
     </div>
     <div class="planta-container">
-      <p class="planta-instruccion">Arrastra los elementos al plano para construir tu esquema de iluminación.</p>
+      <p class="planta-instruccion">Toca un elemento para agregarlo al plano. Arrástralo para posicionarlo. Doble toque para eliminar.</p>
       <div class="iconos-toolbar" id="toolbar-iconos">
-        <div class="icono-btn" draggable="true" data-tipo="camara" data-icon="📷" data-label="Cámara" ondragstart="iniciarArrastre(event)">📷 Cámara</div>
-        <div class="icono-btn" draggable="true" data-tipo="monoblock" data-icon="⚡" data-label="Monoblock" ondragstart="iniciarArrastre(event)">⚡ Monoblock</div>
-        <div class="icono-btn" draggable="true" data-tipo="softbox" data-icon="🔲" data-label="Softbox" ondragstart="iniciarArrastre(event)">🔲 Softbox</div>
-        <div class="icono-btn" draggable="true" data-tipo="paraguas" data-icon="☂" data-label="Paraguas" ondragstart="iniciarArrastre(event)">☂ Paraguas</div>
-        <div class="icono-btn" draggable="true" data-tipo="reflector" data-icon="🪞" data-label="Reflector" ondragstart="iniciarArrastre(event)">🪞 Reflector</div>
-        <div class="icono-btn" draggable="true" data-tipo="modelo" data-icon="🧍" data-label="Modelo" ondragstart="iniciarArrastre(event)">🧍 Modelo</div>
-        <div class="icono-btn" draggable="true" data-tipo="fondo" data-icon="🖼" data-label="Fondo" ondragstart="iniciarArrastre(event)">🖼 Fondo</div>
+        <div class="icono-btn" onclick="agregarAlCanvas('📷', 'Cámara')">📷 Cámara</div>
+        <div class="icono-btn" onclick="agregarAlCanvas('⚡', 'Monoblock')">⚡ Monoblock</div>
+        <div class="icono-btn" onclick="agregarAlCanvas('🔲', 'Softbox')">🔲 Softbox</div>
+        <div class="icono-btn" onclick="agregarAlCanvas('☂', 'Paraguas')">☂ Paraguas</div>
+        <div class="icono-btn" onclick="agregarAlCanvas('🪞', 'Reflector')">🪞 Reflector</div>
+        <div class="icono-btn" onclick="agregarAlCanvas('🧍', 'Modelo')">🧍 Modelo</div>
+        <div class="icono-btn" onclick="agregarAlCanvas('🖼', 'Fondo')">🖼 Fondo</div>
       </div>
       <div class="canvas-planta" id="canvas-planta"
         ondragover="event.preventDefault()"
@@ -553,68 +553,85 @@
 </div><!-- fin documento -->
 
 <script>
-let arrastrandoTipo = null;
-let arrastrandoIcon = null;
-let arrastrandoLabel = null;
-let offsetX = 0, offsetY = 0;
 let elementoActivo = null;
+let offsetX = 0, offsetY = 0;
+let ultimoToque = 0;
 
-function iniciarArrastre(e) {
-  arrastrandoTipo = e.currentTarget.dataset.tipo;
-  arrastrandoIcon = e.currentTarget.dataset.icon;
-  arrastrandoLabel = e.currentTarget.dataset.label;
-  e.dataTransfer.effectAllowed = 'copy';
-}
-
-function soltarElemento(e) {
-  e.preventDefault();
-  if (!arrastrandoTipo) return;
+function agregarAlCanvas(icon, label) {
   const canvas = document.getElementById('canvas-planta');
   const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left - 26;
-  const y = e.clientY - rect.top - 30;
-
-  const el = document.createElement('div');
-  el.className = 'elemento-planta';
-  el.style.left = Math.max(0, x) + 'px';
-  el.style.top = Math.max(0, y) + 'px';
-  el.innerHTML = `<span class="icon">${arrastrandoIcon}</span><span class="etiqueta">${arrastrandoLabel}</span>`;
-  el.title = 'Doble clic para eliminar';
-
-  el.addEventListener('mousedown', iniciarMoverElemento);
-  el.addEventListener('dblclick', () => el.remove());
-  canvas.appendChild(el);
-  arrastrandoTipo = null;
+  const x = 20 + Math.random() * Math.max(10, rect.width - 80);
+  const y = 20 + Math.random() * Math.max(10, rect.height - 70);
+  crearElemento(icon, label, x, y);
 }
 
-function iniciarMoverElemento(e) {
+function crearElemento(icon, label, x, y) {
+  const canvas = document.getElementById('canvas-planta');
+  const el = document.createElement('div');
+  el.className = 'elemento-planta';
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.innerHTML = '<span class="icon">' + icon + '</span><span class="etiqueta">' + label + '</span>';
+  el.addEventListener('mousedown', iniciarMoverMouse);
+  el.addEventListener('touchstart', iniciarMoverTouch, {passive: false});
+  el.addEventListener('touchend', detectarDobleToque);
+  el.addEventListener('dblclick', () => el.remove());
+  canvas.appendChild(el);
+}
+
+function iniciarMoverMouse(e) {
   elementoActivo = e.currentTarget;
   const rect = elementoActivo.getBoundingClientRect();
   offsetX = e.clientX - rect.left;
   offsetY = e.clientY - rect.top;
   elementoActivo.style.zIndex = 100;
-  document.addEventListener('mousemove', moverElemento);
-  document.addEventListener('mouseup', soltarElementoMovido);
+  document.addEventListener('mousemove', moverMouse);
+  document.addEventListener('mouseup', soltarMouse);
   e.preventDefault();
 }
-
-function moverElemento(e) {
+function moverMouse(e) {
   if (!elementoActivo) return;
   const canvas = document.getElementById('canvas-planta');
   const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left - offsetX;
-  const y = e.clientY - rect.top - offsetY;
-  elementoActivo.style.left = Math.max(0, Math.min(x, rect.width - 60)) + 'px';
-  elementoActivo.style.top = Math.max(0, Math.min(y, rect.height - 50)) + 'px';
+  elementoActivo.style.left = Math.max(0, Math.min(e.clientX - rect.left - offsetX, rect.width - 60)) + 'px';
+  elementoActivo.style.top = Math.max(0, Math.min(e.clientY - rect.top - offsetY, rect.height - 50)) + 'px';
+}
+function soltarMouse() {
+  if (elementoActivo) { elementoActivo.style.zIndex = ''; elementoActivo = null; }
+  document.removeEventListener('mousemove', moverMouse);
+  document.removeEventListener('mouseup', soltarMouse);
 }
 
-function soltarElementoMovido() {
-  if (elementoActivo) {
-    elementoActivo.style.zIndex = '';
-    elementoActivo = null;
-  }
-  document.removeEventListener('mousemove', moverElemento);
-  document.removeEventListener('mouseup', soltarElementoMovido);
+function iniciarMoverTouch(e) {
+  elementoActivo = e.currentTarget;
+  const touch = e.touches[0];
+  const rect = elementoActivo.getBoundingClientRect();
+  offsetX = touch.clientX - rect.left;
+  offsetY = touch.clientY - rect.top;
+  elementoActivo.style.zIndex = 100;
+  document.addEventListener('touchmove', moverTouch, {passive: false});
+  document.addEventListener('touchend', soltarTouch);
+  e.preventDefault();
+}
+function moverTouch(e) {
+  if (!elementoActivo) return;
+  const touch = e.touches[0];
+  const canvas = document.getElementById('canvas-planta');
+  const rect = canvas.getBoundingClientRect();
+  elementoActivo.style.left = Math.max(0, Math.min(touch.clientX - rect.left - offsetX, rect.width - 60)) + 'px';
+  elementoActivo.style.top = Math.max(0, Math.min(touch.clientY - rect.top - offsetY, rect.height - 50)) + 'px';
+  e.preventDefault();
+}
+function soltarTouch() {
+  if (elementoActivo) { elementoActivo.style.zIndex = ''; elementoActivo = null; }
+  document.removeEventListener('touchmove', moverTouch);
+  document.removeEventListener('touchend', soltarTouch);
+}
+
+function detectarDobleToque(e) {
+  const ahora = Date.now();
+  if (ahora - ultimoToque < 350) { e.currentTarget.remove(); }
+  ultimoToque = ahora;
 }
 
 function limpiarCanvas() {
@@ -625,27 +642,24 @@ function exportarPDF() {
   const toolbar = document.querySelector('.toolbar');
   const iconosTb = document.getElementById('toolbar-iconos');
   const btnLimpiar = document.querySelector('.btn-limpiar');
-  const notas = document.querySelector('.notas-docente');
-
+  const aviso = document.querySelector('.notas-docente') || document.querySelector('.aviso-docente');
   toolbar.style.display = 'none';
-  iconosTb.style.display = 'none';
-  btnLimpiar.style.display = 'none';
-  notas.style.display = 'none';
-
+  if(iconosTb) iconosTb.style.display = 'none';
+  if(btnLimpiar) btnLimpiar.style.display = 'none';
+  if(aviso) aviso.style.display = 'none';
   const opt = {
-    margin: [12, 12, 12, 12],
-    filename: 'Preproduccion_Moda_Sesion4.pdf',
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, logging: false },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: 'avoid-all' }
+    margin: [12,12,12,12],
+    filename: 'Preproduccion_Sesion4.pdf',
+    image: {type:'jpeg', quality:0.98},
+    html2canvas: {scale:2, useCORS:true, logging:false},
+    jsPDF: {unit:'mm', format:'a4', orientation:'portrait'},
+    pagebreak: {mode:'avoid-all'}
   };
-
   html2pdf().set(opt).from(document.getElementById('documento')).save().then(() => {
     toolbar.style.display = 'flex';
-    iconosTb.style.display = 'flex';
-    btnLimpiar.style.display = 'inline-block';
-    notas.style.display = 'block';
+    if(iconosTb) iconosTb.style.display = 'flex';
+    if(btnLimpiar) btnLimpiar.style.display = 'inline-block';
+    if(aviso) aviso.style.display = 'block';
   });
 }
 </script>
