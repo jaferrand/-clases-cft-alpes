@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[v1.5] Preproducción Foto Comercial — Sesión 4</title>
+<title>[v1.6] Preproducción Foto Comercial — Sesión 4</title>
 <style>.version-badge{position:fixed;bottom:12px;right:12px;background:#111;color:#fff;font-family:monospace;font-size:11px;padding:5px 10px;z-index:9999;letter-spacing:0.05em;}</style>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -425,19 +425,17 @@
   }
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
 <div class="version-badge">v1.1 — táctil</div>
 <div class="toolbar">
-  <button class="btn-export" onclick="window.print()">🖨 Guardar como PDF</button>
+  <button class="btn-export" id="btn-pdf" onclick="exportarPDF()">⬇ Descargar PDF</button>
 </div>
 
-<div class="instrucciones-print">
-  <strong>¿Cómo guardar?</strong><br>
-  📱 <b>iPhone/iPad:</b> Toca <b>🖨 Guardar como PDF</b> → botón compartir (□↑) → <b>Imprimir</b> → pellizca la vista previa con dos dedos → <b>Compartir → Guardar en Archivos</b><br>
-  🤖 <b>Android:</b> Toca <b>🖨 Guardar como PDF</b> → menú del navegador → <b>Imprimir</b> → <b>Guardar como PDF</b>
-</div>
+
 <div id="documento">
 
   <!-- ENCABEZADO -->
@@ -715,6 +713,78 @@ function detectarDobleToque(e) {
 }
 function limpiarCanvas() {
   document.getElementById('canvas-planta').innerHTML = '';
+}
+
+function exportarPDF() {
+  const btn = document.getElementById('btn-pdf');
+  btn.textContent = 'Generando…';
+  btn.disabled = true;
+
+  // Ocultar elementos que no van al PDF
+  const ocultar = [
+    document.querySelector('.toolbar'),
+    document.getElementById('toolbar-iconos'),
+    document.querySelector('.btn-limpiar'),
+    document.querySelector('.notas-docente'),
+    document.querySelector('.aviso-docente'),
+    document.querySelector('.version-badge'),
+    document.querySelector('.instrucciones-print')
+  ].filter(Boolean);
+  ocultar.forEach(el => el.style.visibility = 'hidden');
+
+  const doc = document.getElementById('documento');
+
+  html2canvas(doc, {
+    scale: 2,
+    useCORS: true,
+    logging: false,
+    backgroundColor: '#ffffff',
+    windowWidth: doc.scrollWidth,
+    windowHeight: doc.scrollHeight
+  }).then(canvas => {
+    const { jsPDF } = window.jspdf;
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pW = pdf.internal.pageSize.getWidth();
+    const pH = pdf.internal.pageSize.getHeight();
+    const ratio = canvas.width / canvas.height;
+    const imgH = pW / ratio;
+
+    if (imgH <= pH) {
+      pdf.addImage(imgData, 'JPEG', 0, 0, pW, imgH);
+    } else {
+      // Varias páginas si es muy largo
+      let yPos = 0;
+      const pageH = canvas.width * (pH / pW);
+      let page = 0;
+      while (yPos < canvas.height) {
+        if (page > 0) pdf.addPage();
+        const tmpCanvas = document.createElement('canvas');
+        tmpCanvas.width = canvas.width;
+        tmpCanvas.height = Math.min(pageH, canvas.height - yPos);
+        const ctx = tmpCanvas.getContext('2d');
+        ctx.drawImage(canvas, 0, -yPos);
+        pdf.addImage(tmpCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pW, pH);
+        yPos += pageH;
+        page++;
+      }
+    }
+
+    // Restaurar UI
+    ocultar.forEach(el => el.style.visibility = '');
+    btn.textContent = '⬇ Descargar PDF';
+    btn.disabled = false;
+
+    // Abrir en nueva pestaña — funciona en iOS Safari, Android Chrome
+    const blob = pdf.output('blob');
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  }).catch(err => {
+    ocultar.forEach(el => el.style.visibility = '');
+    btn.textContent = '⬇ Descargar PDF';
+    btn.disabled = false;
+    alert('Error al generar PDF: ' + err.message);
+  });
 }
 </script>
 </body>
