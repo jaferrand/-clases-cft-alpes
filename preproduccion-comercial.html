@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>[v1.3] Preproducción Foto Comercial — Sesión 4</title>
+<title>[v1.4] Preproducción Foto Comercial — Sesión 4</title>
 <style>.version-badge{position:fixed;bottom:12px;right:12px;background:#111;color:#fff;font-family:monospace;font-size:11px;padding:5px 10px;z-index:9999;letter-spacing:0.05em;}</style>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   :root {
     --negro: #1A1A1A;
@@ -404,7 +404,7 @@
 
 <div class="version-badge">v1.1 — táctil</div>
 <div class="toolbar">
-  <button class="btn-export" onclick="exportarPDF()">⬇ Exportar PDF</button>
+  <button class="btn-export" onclick="exportarImagen()">⬇ Guardar como imagen</button>
 </div>
 
 <div id="documento">
@@ -689,9 +689,36 @@ function limpiarCanvas() {
   document.getElementById('canvas-planta').innerHTML = '';
 }
 
-function exportarPDF() {
-  window.print();
+function exportarImagen() {
+  const toolbar = document.querySelector('.toolbar');
+  const iconosTb = document.getElementById('toolbar-iconos');
+  const btnLimpiar = document.querySelector('.btn-limpiar');
+  const aviso = document.querySelector('.notas-docente') || document.querySelector('.aviso-docente');
+  const vbadge = document.querySelector('.version-badge');
+
+  toolbar.style.display = 'none';
+  if(iconosTb) iconosTb.style.display = 'none';
+  if(btnLimpiar) btnLimpiar.style.display = 'none';
+  if(aviso) aviso.style.display = 'none';
+  if(vbadge) vbadge.style.display = 'none';
+
+  const doc = document.getElementById('documento');
+  html2canvas(doc, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' }).then(canvas => {
+    // Restaurar UI
+    toolbar.style.display = 'flex';
+    if(iconosTb) iconosTb.style.display = 'flex';
+    if(btnLimpiar) btnLimpiar.style.display = 'inline-block';
+    if(aviso) aviso.style.display = 'block';
+    if(vbadge) vbadge.style.display = 'block';
+
+    // Abrir imagen en nueva pestaña para guardar
+    const img = canvas.toDataURL('image/jpeg', 0.95);
+    const win = window.open('', '_blank');
+    win.document.write('<html><head><title>Preproducción</title></head><body style="margin:0;background:#111;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding:10px;box-sizing:border-box"><img src="' + img + '" style="max-width:100%;border-radius:4px" /><p style="color:#aaa;text-align:center;font-family:sans-serif;font-size:12px;padding:10px">Mantén presionada la imagen para guardarla</p></body></html>');
+    win.document.close();
+  });
 }
+function exportarPDF() { exportarImagen(); }
 </script>
 </body>
 </html>
